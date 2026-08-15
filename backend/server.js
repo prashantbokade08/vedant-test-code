@@ -50,6 +50,10 @@ app.get("/", (req, res) => {
   res.json({ message: "MERN Todo API is running", endpoints: "/api/todos" });
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 function startServer(uri = process.env.MONGO_URI) {
   mongoose
     .connect(uri)
