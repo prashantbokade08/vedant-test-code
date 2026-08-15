@@ -53,4 +53,3 @@ Security notes
 - Restrict `CORS_ORIGINS` in production.
 - Provide VAPID keys via env vars in production rather than storing them on disk.
 
-If you want, I can add a `Dockerfile` and deployment notes next.
