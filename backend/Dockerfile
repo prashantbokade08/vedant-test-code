@@ -18,6 +18,11 @@ FROM base AS production
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --chown=nodeapp:nodeapp . .
 
+RUN rm -rf \
+    /usr/local/lib/node_modules/npm \
+    /usr/local/lib/node_modules/corepack \
+    /opt/yarn-v1.22.22
+
 ENV NODE_ENV=production
 ENV PORT=5000
 
