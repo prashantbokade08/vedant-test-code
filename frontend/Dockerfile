@@ -14,27 +14,12 @@ ENV VITE_API_BASE=${VITE_API_BASE}
 
 RUN npm run build
 
-FROM node:22-alpine AS production
+FROM nginx:alpine AS production
 
-WORKDIR /app
+COPY --from=build /app/dist /usr/share/nginx/html
 
-ENV NODE_ENV=production
-ENV PORT=4173
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Install only static file server
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --global serve
+EXPOSE 80
 
-# Copy only production build
-COPY --from=build /app/dist ./dist
-
-# Create non-root user
-RUN addgroup -S appgroup \
-    && adduser -S appuser -G appgroup \
-    && chown -R appuser:appgroup /app
-
-USER appuser
-
-EXPOSE 4173
-
-CMD ["serve", "-s", "dist", "-l", "4173"]
+CMD ["nginx", "-g", "daemon off;"]
