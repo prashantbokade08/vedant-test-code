@@ -1,0 +1,28 @@
+# Root gitignore for the project
+
+# Node
+node_modules/
+
+# Backend
+backend/.mongo-data/
+backend/node_modules/
+backend/.env
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.vite/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log
+
+# Editor
+.vscode/
+.idea/

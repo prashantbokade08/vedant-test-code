@@ -1,0 +1,26 @@
+# Node
+node_modules/
+
+# Build output
+dist/
+.build/
+
+# Local env files
+.env
+.env.local
+
+# Vite cache
+.vite/
+
+# Editor/workspace settings
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Coverage
+coverage/
