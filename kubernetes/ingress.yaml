@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vedant-todo-ingress
+  namespace: vedant-todo
+
+  annotations:
+
+    # AWS ALB
+    alb.ingress.kubernetes.io/scheme: internet-facing
+
+    # ALB is created in IP mode
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # Internet-facing HTTP
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+
+    # Health checks
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+
+    # Backend health check
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+
+    # ALB attributes
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+
+spec:
+
+  ingressClassName: alb
+
+  rules:
+    - http:
+
+        paths:
+
+          # Backend API
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-backend
+                port:
+                  number: 5000
+
+          # Frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-frontend
+                port:
+                  number: 80
