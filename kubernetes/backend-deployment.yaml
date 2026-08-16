@@ -25,7 +25,6 @@ spec:
 
     spec:
 
-      # Backend runs only on backend node group
       nodeSelector:
         workload: backend
 

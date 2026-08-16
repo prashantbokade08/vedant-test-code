@@ -26,7 +26,6 @@ spec:
 
     spec:
 
-      # Frontend runs only on frontend node group
       nodeSelector:
         workload: frontend
 
