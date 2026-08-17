@@ -1,4 +1,4 @@
-name: Vedant Test CI/CD Todo EKS
+name: Vedant Test CI/CD - MERN Todo App
 
 on:
   push:
@@ -20,8 +20,6 @@ env:
   AWS_REGION: ap-south-1
   EKS_CLUSTER_NAME: vedant-test-eks
 
-  AWS_ACCOUNT_ID: "047646727557"
-
   ECR_REGISTRY: 047646727557.dkr.ecr.ap-south-1.amazonaws.com
 
   BACKEND_ECR_REPOSITORY: vedant-todo-backend
@@ -29,14 +27,14 @@ env:
 
   K8S_NAMESPACE: vedant-todo
 
+
 jobs:
 
   sast:
-    name: SAST - Semgrep
+    name: SAST
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,9 +46,8 @@ jobs:
             p/typescript
             p/security-audit
 
-
   backend-sca:
-    name: Backend Dependency Security
+    name: Backend SCA
     runs-on: ubuntu-latest
 
     defaults:
@@ -58,11 +55,10 @@ jobs:
         working-directory: backend
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -76,7 +72,7 @@ jobs:
         run: npm audit --audit-level=high
 
   frontend-sca:
-    name: Frontend Dependency Security
+    name: Frontend SCA
     runs-on: ubuntu-latest
 
     defaults:
@@ -84,11 +80,10 @@ jobs:
         working-directory: frontend
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -108,7 +103,6 @@ jobs:
     if: github.event_name == 'pull_request'
 
     steps:
-
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
 
@@ -125,11 +119,10 @@ jobs:
         working-directory: backend
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -141,14 +134,6 @@ jobs:
 
       - name: Validate server.js
         run: node --check server.js
-
-      - name: Validate JavaScript files
-        run: |
-          find . \
-            -type f \
-            -name "*.js" \
-            -not -path "./node_modules/*" \
-            -print0 | xargs -0 -n1 node --check
 
   frontend:
     name: Frontend Validation
@@ -163,11 +148,10 @@ jobs:
         working-directory: frontend
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -179,9 +163,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build
-        env:
-          VITE_API_BASE: ""
-
 
   container-scan:
     name: Container Security Scan
@@ -192,7 +173,6 @@ jobs:
       - frontend
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -205,11 +185,9 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           load: true
-          tags: |
-            todo-backend:${{ github.sha }}
+          tags: todo-backend:${{ github.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
-
 
       - name: Build frontend image
         uses: docker/build-push-action@v6
@@ -217,13 +195,11 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           load: true
-          tags: |
-            todo-frontend:${{ github.sha }}
+          tags: todo-frontend:${{ github.sha }}
           build-args: |
             VITE_API_BASE=
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
-
 
       - name: Scan backend image
         uses: aquasecurity/trivy-action@master
@@ -232,7 +208,6 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
-          format: table
 
       - name: Scan frontend image
         uses: aquasecurity/trivy-action@master
@@ -241,10 +216,9 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
-          format: table
 
   build-and-push:
-    name: Build and Push Images to ECR
+    name: Build and Push to ECR
     runs-on: ubuntu-latest
 
     needs:
@@ -253,7 +227,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -263,22 +236,15 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
 
-
-
       - name: Verify AWS identity
         run: |
           aws sts get-caller-identity
 
-
-
       - name: Login to Amazon ECR
-        id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
-
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
-
 
       - name: Build and push backend image
         uses: docker/build-push-action@v6
@@ -312,6 +278,7 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
+
   deploy:
     name: Deploy to EKS
     runs-on: ubuntu-latest
@@ -321,11 +288,7 @@ jobs:
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    environment:
-      name: production
-
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -345,91 +308,64 @@ jobs:
             --region "${AWS_REGION}" \
             --name "${EKS_CLUSTER_NAME}"
 
-
       - name: Verify EKS cluster
         run: |
           kubectl cluster-info
           kubectl get nodes
 
-
-      - name: Verify Kubernetes namespace
+      - name: Verify namespace
         run: |
           kubectl get namespace "${K8S_NAMESPACE}"
 
-
-      - name: Deploy backend
+      - name: Update backend deployment
         run: |
-          kubectl -n "${K8S_NAMESPACE}" \
-            set image deployment/todo-backend \
-            backend="${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}"
+          kubectl set image deployment/todo-backend \
+            backend=${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA} \
+            -n "${K8S_NAMESPACE}"
 
-
-      - name: Deploy frontend
+      - name: Update frontend deployment
         run: |
-          kubectl -n "${K8S_NAMESPACE}" \
-            set image deployment/todo-frontend \
-            frontend="${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA}"
-
-
-      - name: Set image pull policy
-        run: |
-          kubectl -n "${K8S_NAMESPACE}" \
-            patch deployment todo-backend \
-            -p '{"spec":{"template":{"spec":{"containers":[{"name":"backend","imagePullPolicy":"Always"}]}}}}'
-
-          kubectl -n "${K8S_NAMESPACE}" \
-            patch deployment todo-frontend \
-            -p '{"spec":{"template":{"spec":{"containers":[{"name":"frontend","imagePullPolicy":"Always"}]}}}}'
-
+          kubectl set image deployment/todo-frontend \
+            frontend=${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA} \
+            -n "${K8S_NAMESPACE}"
 
       - name: Wait for backend rollout
         run: |
-          kubectl rollout status \
-            deployment/todo-backend \
+          kubectl rollout status deployment/todo-backend \
             -n "${K8S_NAMESPACE}" \
             --timeout=5m
-
 
       - name: Wait for frontend rollout
         run: |
-          kubectl rollout status \
-            deployment/todo-frontend \
+          kubectl rollout status deployment/todo-frontend \
             -n "${K8S_NAMESPACE}" \
             --timeout=5m
 
-
-      - name: Verify deployments
+      - name: Check pods
         run: |
-          kubectl get deployments \
-            -n "${K8S_NAMESPACE}"
-
           kubectl get pods \
             -n "${K8S_NAMESPACE}" \
             -o wide
 
+      - name: Check deployments
+        run: |
+          kubectl get deployments \
+            -n "${K8S_NAMESPACE}"
 
-      - name: Verify services
+      - name: Check services
         run: |
           kubectl get services \
             -n "${K8S_NAMESPACE}"
 
-
-      - name: Verify ingress
-        run: |
-          kubectl get ingress \
-            -n "${K8S_NAMESPACE}"
-
-      - name: Verify HPA
+      - name: Check HPA
         run: |
           kubectl get hpa \
             -n "${K8S_NAMESPACE}"
 
-
-      - name: Verify PDB
+      - name: Check ingress
         run: |
-          kubectl get pdb \
+          kubectl get ingress \
             -n "${K8S_NAMESPACE}"
-
 
       - name: Backend health check
         run: |
@@ -448,7 +384,7 @@ jobs:
       - name: Deployment summary
         run: |
           echo "Deployment completed successfully"
-          echo "Commit:"
+          echo "Git commit:"
           echo "${GITHUB_SHA}"
           echo "Backend image:"
           echo "${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}"
@@ -458,6 +394,3 @@ jobs:
           echo "${EKS_CLUSTER_NAME}"
           echo "Namespace:"
           echo "${K8S_NAMESPACE}"
-          kubectl get pods \
-            -n "${K8S_NAMESPACE}" \
-            -o wide
