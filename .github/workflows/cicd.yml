@@ -1,10 +1,9 @@
-name: Vedant Test CI/CD - MERN Todo App
+name: Vedant Test Todo App
 
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
@@ -16,20 +15,14 @@ permissions:
 
 env:
   NODE_VERSION: "22"
-
   AWS_REGION: ap-south-1
   EKS_CLUSTER_NAME: vedant-test-eks
-
   ECR_REGISTRY: 047646727557.dkr.ecr.ap-south-1.amazonaws.com
-
   BACKEND_ECR_REPOSITORY: vedant-todo-backend
   FRONTEND_ECR_REPOSITORY: vedant-todo-frontend
-
   K8S_NAMESPACE: vedant-todo
 
-
 jobs:
-
   sast:
     name: SAST
     runs-on: ubuntu-latest
@@ -237,8 +230,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
 
       - name: Verify AWS identity
-        run: |
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -252,14 +244,11 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-
           tags: |
             ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
             ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest
-
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
-
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -267,17 +256,13 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-
           tags: |
             ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
             ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest
-
           build-args: |
             VITE_API_BASE=
-
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
-
 
   deploy:
     name: Deploy to EKS
@@ -299,8 +284,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
 
       - name: Verify AWS identity
-        run: |
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
       - name: Configure EKS kubeconfig
         run: |
@@ -314,8 +298,7 @@ jobs:
           kubectl get nodes
 
       - name: Verify namespace
-        run: |
-          kubectl get namespace "${K8S_NAMESPACE}"
+        run: kubectl get namespace "${K8S_NAMESPACE}"
 
       - name: Update backend deployment
         run: |
@@ -348,24 +331,16 @@ jobs:
             -o wide
 
       - name: Check deployments
-        run: |
-          kubectl get deployments \
-            -n "${K8S_NAMESPACE}"
+        run: kubectl get deployments -n "${K8S_NAMESPACE}"
 
       - name: Check services
-        run: |
-          kubectl get services \
-            -n "${K8S_NAMESPACE}"
+        run: kubectl get services -n "${K8S_NAMESPACE}"
 
       - name: Check HPA
-        run: |
-          kubectl get hpa \
-            -n "${K8S_NAMESPACE}"
+        run: kubectl get hpa -n "${K8S_NAMESPACE}"
 
       - name: Check ingress
-        run: |
-          kubectl get ingress \
-            -n "${K8S_NAMESPACE}"
+        run: kubectl get ingress -n "${K8S_NAMESPACE}"
 
       - name: Backend health check
         run: |
@@ -380,45 +355,11 @@ jobs:
             --show-error \
             http://todo-backend:5000/health
 
-
       - name: Deployment summary
         run: |
           echo "Deployment completed successfully"
-          echo "Git commit:"
-          echo "${GITHUB_SHA}"
-          echo "Backend image:"
-          echo "${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}"
-          echo "Frontend image:"
-          echo "${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA}"
-          echo "EKS cluster:"
-          echo "${EKS_CLUSTER_NAME}"
-          echo "Namespace:"
-          echo "${K8S_NAMESPACE}"
-
-  debug-oidc:
-    name: Debug GitHub OIDC
-    runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Get OIDC token claims
-        shell: bash
-        run: |
-          TOKEN=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
-            | jq -r '.value')
-
-          echo "$TOKEN" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '{
-            sub,
-            aud,
-            repository,
-            repository_id,
-            repository_owner,
-            repository_owner_id,
-            ref,
-            ref_type
-          }'
+          echo "Git commit: ${GITHUB_SHA}"
+          echo "Backend image: ${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}"
+          echo "Frontend image: ${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA}"
+          echo "EKS cluster: ${EKS_CLUSTER_NAME}"
+          echo "Namespace: ${K8S_NAMESPACE}"
