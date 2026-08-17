@@ -152,7 +152,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1>✅ MERN Todo App</h1>
+      <h1>Vedant test Todo App</h1>
       <div className="settings">
         {push.status === "default" && (
           <button
