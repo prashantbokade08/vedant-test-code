@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
@@ -22,7 +23,6 @@ env:
   BACKEND_ECR_REPOSITORY: vedant-todo-backend
   FRONTEND_ECR_REPOSITORY: vedant-todo-frontend
   K8S_NAMESPACE: vedant-todo
-  AWS_ROLE_ARN: arn:aws:iam::047646727557:role/github-actions-vedant-todo
 
 jobs:
   sast:
@@ -228,7 +228,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
@@ -284,7 +284,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
@@ -363,18 +363,52 @@ jobs:
 
       - name: Backend health check
         run: |
+          kubectl delete pod ci-health-check \
+            --namespace="${K8S_NAMESPACE}" \
+            --ignore-not-found=true
+
           kubectl run ci-health-check \
-            --rm \
             --restart=Never \
             --image=curlimages/curl \
             --namespace="${K8S_NAMESPACE}" \
-            -- \
-            curl \
+            --command \
+            -- curl \
               --fail \
               --silent \
               --show-error \
               --max-time 10 \
               http://todo-backend:5000/health
+
+          if kubectl wait \
+            --for=jsonpath='{.status.phase}'=Succeeded \
+            pod/ci-health-check \
+            --namespace="${K8S_NAMESPACE}" \
+            --timeout=60s; then
+
+            kubectl logs \
+              pod/ci-health-check \
+              --namespace="${K8S_NAMESPACE}"
+
+            kubectl delete pod ci-health-check \
+              --namespace="${K8S_NAMESPACE}" \
+              --ignore-not-found=true
+
+          else
+
+            kubectl describe pod ci-health-check \
+              --namespace="${K8S_NAMESPACE}"
+
+            kubectl logs \
+              pod/ci-health-check \
+              --namespace="${K8S_NAMESPACE}" \
+              --ignore-errors=true
+
+            kubectl delete pod ci-health-check \
+              --namespace="${K8S_NAMESPACE}" \
+              --ignore-not-found=true
+
+            exit 1
+          fi
 
       - name: Deployment summary
         run: |
