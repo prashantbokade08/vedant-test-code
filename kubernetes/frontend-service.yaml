@@ -9,7 +9,6 @@ metadata:
     app: todo-frontend
 
   annotations:
-    # AWS ALB target health check
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/healthcheck-port: traffic-port
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP

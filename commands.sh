@@ -96,10 +96,6 @@ aws eks describe-cluster \
   --region ap-south-1 \
   --query "cluster.identity.oidc.issuer"
 
-
-
-
-
 aws eks update-kubeconfig \
   --region ap-south-1 \
   --name vedant-test-eks
