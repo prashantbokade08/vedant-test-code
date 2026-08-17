@@ -17,23 +17,12 @@ const VAPID_PRIVATE = process.env.VAPID_PRIVATE?.trim();
 const VAPID_EMAIL =
   process.env.VAPID_EMAIL?.trim() || "mailto:admin@todo.local";
 
-// ============================================================
-// VAPID state
-// ============================================================
 
 let vapidKeys = null;
 let pushEnabled = false;
 
-// ============================================================
-// Load VAPID keys
-// ============================================================
 
 function loadVapidKeys() {
-  // ----------------------------------------------------------
-  // Production / Kubernetes
-  //
-  // Prefer Kubernetes Secret / environment variables.
-  // ----------------------------------------------------------
 
   if (VAPID_PUBLIC && VAPID_PRIVATE) {
     console.log("VAPID keys loaded from environment variables.");
@@ -44,11 +33,6 @@ function loadVapidKeys() {
     };
   }
 
-  // ----------------------------------------------------------
-  // Development
-  //
-  // If a local VAPID key file exists, use it.
-  // ----------------------------------------------------------
 
   if (existsSync(KEYS_FILE)) {
     try {
@@ -79,18 +63,6 @@ function loadVapidKeys() {
     }
   }
 
-  // ----------------------------------------------------------
-  // Production without VAPID keys
-  //
-  // Do NOT crash the backend.
-  //
-  // Push notifications will simply be disabled until:
-  //
-  // VAPID_PUBLIC
-  // VAPID_PRIVATE
-  //
-  // are provided through Kubernetes Secret.
-  // ----------------------------------------------------------
 
   if (process.env.NODE_ENV === "production") {
     console.warn(
@@ -108,12 +80,7 @@ function loadVapidKeys() {
     return null;
   }
 
-  // ----------------------------------------------------------
-  // Development fallback
-  //
-  // Generate keys automatically for local development.
-  // ----------------------------------------------------------
-
+ 
   try {
     console.log(
       "Generating VAPID keys for development..."
@@ -146,9 +113,6 @@ function loadVapidKeys() {
   }
 }
 
-// ============================================================
-// Initialize VAPID
-// ============================================================
 
 try {
   vapidKeys = loadVapidKeys();
@@ -186,9 +150,6 @@ try {
   );
 }
 
-// ============================================================
-// Public VAPID key
-// ============================================================
 
 export function getPublicKey() {
   if (!pushEnabled || !vapidKeys?.publicKey) {
@@ -198,18 +159,12 @@ export function getPublicKey() {
   return vapidKeys.publicKey;
 }
 
-// ============================================================
-// Send notification to all subscriptions
-// ============================================================
 
 export async function sendToAll(
   title,
   body,
   url = "/"
 ) {
-  // ----------------------------------------------------------
-  // Push disabled
-  // ----------------------------------------------------------
 
   if (!pushEnabled) {
     console.warn(
@@ -235,9 +190,6 @@ export async function sendToAll(
 
     for (const subscription of subscriptions) {
       try {
-        // ----------------------------------------------------
-        // Validate subscription
-        // ----------------------------------------------------
 
         if (
           !subscription.endpoint ||
@@ -251,9 +203,6 @@ export async function sendToAll(
           continue;
         }
 
-        // ----------------------------------------------------
-        // Send notification
-        // ----------------------------------------------------
 
         await webpush.sendNotification(
           {
@@ -266,9 +215,6 @@ export async function sendToAll(
           payload
         );
       } catch (error) {
-        // ----------------------------------------------------
-        // Subscription expired / no longer valid
-        // ----------------------------------------------------
 
         if (
           error.statusCode === 404 ||
@@ -304,9 +250,6 @@ export async function sendToAll(
   }
 }
 
-// ============================================================
-// Reminder scheduler
-// ============================================================
 
 export function startReminderScheduler(
   intervalMs = 30_000
@@ -323,10 +266,7 @@ export function startReminderScheduler(
         now.getTime() - 24 * 60 * 60 * 1000
       );
 
-      // ------------------------------------------------------
-      // Find pending reminders
-      // ------------------------------------------------------
-
+ 
       const dueTodos = await Todo.find({
         completed: false,
         reminderFired: false,
@@ -345,9 +285,6 @@ export function startReminderScheduler(
         `Found ${dueTodos.length} due reminder(s).`
       );
 
-      // ------------------------------------------------------
-      // Process reminders
-      // ------------------------------------------------------
 
       for (const todo of dueTodos) {
         try {
@@ -378,9 +315,6 @@ export function startReminderScheduler(
     }
   };
 
-  // ----------------------------------------------------------
-  // Run first check immediately
-  // ----------------------------------------------------------
 
   runReminderCheck().catch((error) => {
     console.error(
@@ -388,10 +322,6 @@ export function startReminderScheduler(
       error.message
     );
   });
-
-  // ----------------------------------------------------------
-  // Run periodically
-  // ----------------------------------------------------------
 
   return setInterval(
     runReminderCheck,

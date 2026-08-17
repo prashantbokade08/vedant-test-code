@@ -1,7 +1,3 @@
-# ============================================================
-# Build stage
-# ============================================================
-
 FROM node:22-alpine AS build
 
 WORKDIR /app
@@ -17,11 +13,6 @@ ARG VITE_API_BASE
 ENV VITE_API_BASE=${VITE_API_BASE}
 
 RUN npm run build
-
-
-# ============================================================
-# Production stage
-# ============================================================
 
 FROM nginxinc/nginx-unprivileged:alpine AS production
 

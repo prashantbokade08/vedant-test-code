@@ -15,10 +15,6 @@ const app = express();
 const PORT = Number(process.env.PORT || 5000);
 const HOST = process.env.HOST || "0.0.0.0";
 
-// ============================================================
-// CORS
-// ============================================================
-
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS
       .split(",")
@@ -29,14 +25,10 @@ const allowedOrigins = process.env.CORS_ORIGINS
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests without an Origin header
-      // Example: curl, health checks, internal requests
       if (!origin) {
         return callback(null, true);
       }
 
-      // If CORS_ORIGINS is not configured,
-      // allow all origins.
       if (!allowedOrigins || allowedOrigins.length === 0) {
         return callback(null, true);
       }
@@ -53,19 +45,12 @@ app.use(
   })
 );
 
-// ============================================================
-// Security middleware
-// ============================================================
-
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
   })
 );
 
-// ============================================================
-// Request parsing
-// ============================================================
 
 app.use(
   express.json({
@@ -73,15 +58,8 @@ app.use(
   })
 );
 
-// ============================================================
-// MongoDB sanitization
-// ============================================================
 
 app.use(mongoSanitize());
-
-// ============================================================
-// Rate limiting
-// ============================================================
 
 const rateLimitMax = Number(process.env.RATE_LIMIT_MAX || 100);
 
@@ -102,10 +80,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ============================================================
-// Root API endpoint
-// ============================================================
-
 app.get("/", (req, res) => {
   res.status(200).json({
     message: "MERN Todo API is running",
@@ -118,17 +92,9 @@ app.get("/", (req, res) => {
   });
 });
 
-// ============================================================
-// API routes
-// ============================================================
-
 app.use("/api/todos", todoRoutes);
 
 app.use("/api/subscriptions", subscriptionRoutes);
-
-// ============================================================
-// 404 handler
-// ============================================================
 
 app.use((req, res) => {
   res.status(404).json({
@@ -136,10 +102,6 @@ app.use((req, res) => {
     path: req.originalUrl,
   });
 });
-
-// ============================================================
-// Global error handler
-// ============================================================
 
 app.use((err, req, res, next) => {
   console.error("Unhandled application error:", err);
@@ -159,10 +121,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ============================================================
-// Start server
-// ============================================================
-
 async function startServer(uri = process.env.MONGO_URI) {
   if (!uri) {
     console.error("MONGO_URI environment variable is not configured.");
@@ -170,24 +128,13 @@ async function startServer(uri = process.env.MONGO_URI) {
   }
 
   try {
-    // ----------------------------------------------------------
-    // MongoDB connection
-    // ----------------------------------------------------------
 
     await mongoose.connect(uri);
 
     console.log("Connected to MongoDB");
 
-    // ----------------------------------------------------------
-    // Start HTTP server
-    // ----------------------------------------------------------
-
     const server = app.listen(PORT, HOST, () => {
       console.log(`Server running on http://${HOST}:${PORT}`);
-
-      // --------------------------------------------------------
-      // Start reminder scheduler
-      // --------------------------------------------------------
 
       try {
         const scheduler = startReminderScheduler();
@@ -196,9 +143,6 @@ async function startServer(uri = process.env.MONGO_URI) {
           "Reminder scheduler started (checks every 30s)"
         );
 
-        // ------------------------------------------------------
-        // Graceful shutdown
-        // ------------------------------------------------------
 
         const shutdown = async (signal) => {
           console.log(`Received ${signal}, shutting down...`);
@@ -241,10 +185,6 @@ async function startServer(uri = process.env.MONGO_URI) {
       }
     });
 
-    // ----------------------------------------------------------
-    // Handle server errors
-    // ----------------------------------------------------------
-
     server.on("error", (error) => {
       console.error("HTTP server error:", error);
 
@@ -265,10 +205,6 @@ async function startServer(uri = process.env.MONGO_URI) {
     process.exit(1);
   }
 }
-
-// ============================================================
-// Start application
-// ============================================================
 
 startServer();
 
