@@ -2,6 +2,7 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "ECRAuthentication",
       "Effect": "Allow",
       "Action": [
         "ecr:GetAuthorizationToken"
@@ -9,9 +10,11 @@
       "Resource": "*"
     },
     {
+      "Sid": "ECRRepositoryAccess",
       "Effect": "Allow",
       "Action": [
         "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
         "ecr:CompleteLayerUpload",
         "ecr:InitiateLayerUpload",
         "ecr:PutImage",
