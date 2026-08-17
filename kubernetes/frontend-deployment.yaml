@@ -33,7 +33,7 @@ spec:
       containers:
         - name: frontend
 
-          image: 047646727557.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-frontend:v2
+          image: 047646727557.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-frontend:latest
           imagePullPolicy: Always
 
           ports:

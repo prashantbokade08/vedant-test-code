@@ -35,7 +35,7 @@ spec:
       containers:
         - name: backend
 
-          image: 047646727557.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-backend:v1
+          image: 047646727557.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-backend:latest
 
           imagePullPolicy: Always
 
