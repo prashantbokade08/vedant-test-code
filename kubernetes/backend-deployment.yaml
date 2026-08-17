@@ -1,12 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: todo-backend
   namespace: vedant-todo
   labels:
     app: todo-backend
+
 spec:
   replicas: 2
+
+  revisionHistoryLimit: 3
 
   strategy:
     type: RollingUpdate
@@ -24,28 +28,30 @@ spec:
         app: todo-backend
 
     spec:
-
-      nodeSelector:
-        workload: backend
-
       terminationGracePeriodSeconds: 30
+
+      hostNetwork: false
 
       containers:
         - name: backend
-          image: YOUR_AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-backend:latest
+
+          image: 047646727557.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-backend:v1
 
           imagePullPolicy: Always
 
           ports:
-            - containerPort: 5000
+            - name: http
+              containerPort: 5000
               protocol: TCP
 
           envFrom:
             - configMapRef:
                 name: vedant-todo-config
-                
+                optional: false
+
             - secretRef:
                 name: vedant-todo-secret
+                optional: false
 
           resources:
             requests:
@@ -56,24 +62,48 @@ spec:
               cpu: "1000m"
               memory: "512Mi"
 
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+
           readinessProbe:
             httpGet:
               path: /health
-              port: 5000
-            initialDelaySeconds: 10
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
+            successThreshold: 1
             failureThreshold: 3
 
           livenessProbe:
             httpGet:
               path: /health
-              port: 5000
+              port: http
+              scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 20
             timeoutSeconds: 5
+            successThreshold: 1
             failureThreshold: 3
 
           securityContext:
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: todo-backend

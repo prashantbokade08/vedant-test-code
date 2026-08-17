@@ -6,8 +6,8 @@ import { useAlarm } from "./hooks/useAlarm.js";
 import { usePush } from "./hooks/usePush.js";
 import { TONE_OPTIONS, playTone } from "./utils/sounds.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
-const API = `${API_BASE}/api/todos`;
+const API = "/api/todos";
+// const API = `${API_BASE}/api/todos`;
 
 export default function App() {
   const [todos, setTodos] = useState([]);

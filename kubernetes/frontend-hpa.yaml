@@ -1,11 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
+
 metadata:
   name: todo-frontend-hpa
   namespace: vedant-todo
+  labels:
+    app: todo-frontend
 
 spec:
-
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
@@ -16,18 +18,39 @@ spec:
 
   behavior:
     scaleUp:
+      # Scale up immediately when sustained CPU demand increases.
       stabilizationWindowSeconds: 0
+
       policies:
+        # Allow up to 100% increase every 60 seconds.
         - type: Percent
           value: 100
           periodSeconds: 60
 
+        # Limit a single scaling event to 4 additional pods.
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+
+      selectPolicy: Max
+
     scaleDown:
+      # Wait 5 minutes before reducing replicas.
       stabilizationWindowSeconds: 300
+
       policies:
+        # Reduce by no more than 50% every 60 seconds.
         - type: Percent
           value: 50
           periodSeconds: 60
+
+        # Never remove more than 2 pods in one 60-second period.
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+
+      # Use the more conservative scale-down policy.
+      selectPolicy: Min
 
   metrics:
     - type: Resource

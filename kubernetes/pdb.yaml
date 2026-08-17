@@ -1,5 +1,6 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
+
 metadata:
   name: todo-backend-pdb
   namespace: vedant-todo
@@ -10,9 +11,11 @@ spec:
   selector:
     matchLabels:
       app: todo-backend
+
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
+
 metadata:
   name: todo-frontend-pdb
   namespace: vedant-todo

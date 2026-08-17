@@ -1,23 +1,31 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
+
 metadata:
   name: vedant-todo-ingress
   namespace: vedant-todo
 
   annotations:
+    # Create an internet-facing AWS Application Load Balancer
     alb.ingress.kubernetes.io/scheme: internet-facing
+
+    # Register pod IPs directly as ALB targets
     alb.ingress.kubernetes.io/target-type: ip
+
+    # Test deployment: HTTP only, no DNS/SSL required
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
-    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
-    alb.ingress.kubernetes.io/healthcheck-path: /health
+
+    # ALB idle connection timeout
     alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
 
 spec:
   ingressClassName: alb
+
   rules:
     - http:
         paths:
+
+          # Backend API
           - path: /api
             pathType: Prefix
             backend:
@@ -25,6 +33,8 @@ spec:
                 name: todo-backend
                 port:
                   number: 5000
+
+          # Frontend
           - path: /
             pathType: Prefix
             backend:

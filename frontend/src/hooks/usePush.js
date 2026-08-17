@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
-const API = `${API_BASE}/api/subscriptions`;
+const API_BASE = import.meta.env.VITE_API_BASE === "/api" ? "" : (import.meta.env.VITE_API_BASE || "");
+// const API = `${API_BASE}/api/subscriptions`;
 
 function urlBase64ToUint8Array(base64) {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);

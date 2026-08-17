@@ -1,5 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: todo-frontend
   namespace: vedant-todo
@@ -8,6 +9,8 @@ metadata:
 
 spec:
   replicas: 2
+
+  revisionHistoryLimit: 3
 
   strategy:
     type: RollingUpdate
@@ -25,21 +28,17 @@ spec:
         app: todo-frontend
 
     spec:
-
-      nodeSelector:
-        workload: frontend
-
       terminationGracePeriodSeconds: 30
 
       containers:
         - name: frontend
 
-          image: YOUR_AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-frontend:latest
-
+          image: 047646727557.dkr.ecr.ap-south-1.amazonaws.com/vedant-todo-frontend:v2
           imagePullPolicy: Always
 
           ports:
-            - containerPort: 80
+            - name: http
+              containerPort: 8080
               protocol: TCP
 
           resources:
@@ -54,20 +53,46 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: http
+              scheme: HTTP
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
+            successThreshold: 1
             failureThreshold: 3
 
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: http
+              scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 20
             timeoutSeconds: 5
+            successThreshold: 1
             failureThreshold: 3
 
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 101
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: todo-frontend
