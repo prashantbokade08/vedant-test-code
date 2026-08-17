@@ -1,10 +1,9 @@
-name: Vedant Todo - CI/CD
+name: Vedant Test Todo App CI/CD
 
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
@@ -16,31 +15,25 @@ permissions:
 
 env:
   NODE_VERSION: "22"
-
   AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "047646727557"
   EKS_CLUSTER_NAME: vedant-test-eks
-
   ECR_REGISTRY: 047646727557.dkr.ecr.ap-south-1.amazonaws.com
   BACKEND_ECR_REPOSITORY: vedant-todo-backend
   FRONTEND_ECR_REPOSITORY: vedant-todo-frontend
-
   K8S_NAMESPACE: vedant-todo
-
-# ---------------------------------------------------------------------------
-# SAST - Static Application Security Testing
-# ---------------------------------------------------------------------------
+  AWS_ROLE_ARN: arn:aws:iam::047646727557:role/github-actions-vedant-todo
 
 jobs:
-
   sast:
     name: SAST
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Semgrep
+      - name: Semgrep
         uses: semgrep/semgrep-action@v1
         with:
           config: |
@@ -48,13 +41,8 @@ jobs:
             p/typescript
             p/security-audit
 
-
-  # -------------------------------------------------------------------------
-  # Backend dependency security scan
-  # -------------------------------------------------------------------------
-
   backend-sca:
-    name: Backend Dependency Scan
+    name: Backend SCA
     runs-on: ubuntu-latest
 
     defaults:
@@ -62,7 +50,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -75,16 +63,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run npm security audit
+      - name: Security audit
         run: npm audit --audit-level=high
 
-
-  # -------------------------------------------------------------------------
-  # Frontend dependency security scan
-  # -------------------------------------------------------------------------
-
   frontend-sca:
-    name: Frontend Dependency Scan
+    name: Frontend SCA
     runs-on: ubuntu-latest
 
     defaults:
@@ -92,7 +75,7 @@ jobs:
         working-directory: frontend
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -105,13 +88,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run npm security audit
+      - name: Security audit
         run: npm audit --audit-level=high
-
-
-  # -------------------------------------------------------------------------
-  # Dependency review for pull requests
-  # -------------------------------------------------------------------------
 
   dependency-review:
     name: Dependency Review
@@ -120,13 +98,8 @@ jobs:
     if: github.event_name == 'pull_request'
 
     steps:
-      - name: Review dependency changes
+      - name: Dependency review
         uses: actions/dependency-review-action@v4
-
-
-  # -------------------------------------------------------------------------
-  # Backend validation
-  # -------------------------------------------------------------------------
 
   backend:
     name: Backend Validation
@@ -141,7 +114,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -154,13 +127,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate Node.js syntax
+      - name: Validate server
         run: node --check server.js
-
-
-  # -------------------------------------------------------------------------
-  # Frontend validation and production build
-  # -------------------------------------------------------------------------
 
   frontend:
     name: Frontend Validation
@@ -175,7 +143,7 @@ jobs:
         working-directory: frontend
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -191,11 +159,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-
-  # -------------------------------------------------------------------------
-  # Build Docker images and scan them with Trivy
-  # -------------------------------------------------------------------------
-
   container-scan:
     name: Container Security Scan
     runs-on: ubuntu-latest
@@ -205,7 +168,7 @@ jobs:
       - frontend
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Docker Buildx
@@ -249,13 +212,8 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
 
-
-  # -------------------------------------------------------------------------
-  # Build and push images to Amazon ECR
-  # -------------------------------------------------------------------------
-
   build-and-push:
-    name: Build and Push Images
+    name: Build and Push to ECR
     runs-on: ubuntu-latest
 
     needs:
@@ -264,21 +222,19 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # GitHub OIDC -> AWS IAM Role
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-          allowed-account-ids: "047646727557"
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
 
       - name: Verify AWS identity
-        run: |
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -286,11 +242,7 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ---------------------------------------------------------------------
-      # Backend
-      # ---------------------------------------------------------------------
-
-      - name: Build and push backend image
+      - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
@@ -302,11 +254,7 @@ jobs:
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
-      # ---------------------------------------------------------------------
-      # Frontend
-      # ---------------------------------------------------------------------
-
-      - name: Build and push frontend image
+      - name: Build and push frontend
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
@@ -320,11 +268,6 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-
-  # -------------------------------------------------------------------------
-  # Deploy to Amazon EKS
-  # -------------------------------------------------------------------------
-
   deploy:
     name: Deploy to EKS
     runs-on: ubuntu-latest
@@ -335,70 +278,48 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # GitHub OIDC -> AWS IAM Role
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.2.3
         with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-          allowed-account-ids: "047646727557"
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
 
       - name: Verify AWS identity
-        run: |
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
-      # ---------------------------------------------------------------------
-      # Configure kubectl
-      # ---------------------------------------------------------------------
-
-      - name: Configure EKS kubeconfig
+      - name: Configure EKS
         run: |
           aws eks update-kubeconfig \
             --region "${AWS_REGION}" \
             --name "${EKS_CLUSTER_NAME}"
 
-      - name: Verify EKS cluster
+      - name: Verify EKS
         run: |
           kubectl cluster-info
           kubectl get nodes
 
-      # ---------------------------------------------------------------------
-      # Verify Kubernetes namespace
-      # ---------------------------------------------------------------------
-
-      - name: Verify Kubernetes namespace
+      - name: Verify namespace
         run: |
           kubectl get namespace "${K8S_NAMESPACE}"
 
-      # ---------------------------------------------------------------------
-      # Deploy backend
-      # ---------------------------------------------------------------------
-
-      - name: Update backend image
+      - name: Update backend deployment
         run: |
           kubectl set image \
             deployment/todo-backend \
             backend="${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}" \
             --namespace="${K8S_NAMESPACE}"
 
-      # ---------------------------------------------------------------------
-      # Deploy frontend
-      # ---------------------------------------------------------------------
-
-      - name: Update frontend image
+      - name: Update frontend deployment
         run: |
           kubectl set image \
             deployment/todo-frontend \
             frontend="${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA}" \
             --namespace="${K8S_NAMESPACE}"
-
-      # ---------------------------------------------------------------------
-      # Wait for backend rollout
-      # ---------------------------------------------------------------------
 
       - name: Wait for backend rollout
         run: |
@@ -407,20 +328,12 @@ jobs:
             --namespace="${K8S_NAMESPACE}" \
             --timeout=5m
 
-      # ---------------------------------------------------------------------
-      # Wait for frontend rollout
-      # ---------------------------------------------------------------------
-
       - name: Wait for frontend rollout
         run: |
           kubectl rollout status \
             deployment/todo-frontend \
             --namespace="${K8S_NAMESPACE}" \
             --timeout=5m
-
-      # ---------------------------------------------------------------------
-      # Kubernetes verification
-      # ---------------------------------------------------------------------
 
       - name: Verify pods
         run: |
@@ -448,10 +361,6 @@ jobs:
           kubectl get ingress \
             --namespace="${K8S_NAMESPACE}"
 
-      # ---------------------------------------------------------------------
-      # Backend health check
-      # ---------------------------------------------------------------------
-
       - name: Backend health check
         run: |
           kubectl run ci-health-check \
@@ -467,23 +376,12 @@ jobs:
               --max-time 10 \
               http://todo-backend:5000/health
 
-      # ---------------------------------------------------------------------
-      # Deployment summary
-      # ---------------------------------------------------------------------
-
       - name: Deployment summary
         run: |
-          echo "=============================================="
-          echo "Vedant Todo deployment completed successfully"
-          echo "=============================================="
-          echo "Commit:       ${GITHUB_SHA}"
-          echo "AWS Region:   ${AWS_REGION}"
-          echo "EKS Cluster:  ${EKS_CLUSTER_NAME}"
-          echo "Namespace:     ${K8S_NAMESPACE}"
-          echo ""
-          echo "Backend:"
-          echo "${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}"
-          echo ""
-          echo "Frontend:"
-          echo "${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA}"
-          echo "=============================================="
+          echo "Deployment completed successfully"
+          echo "Commit: ${GITHUB_SHA}"
+          echo "AWS Region: ${AWS_REGION}"
+          echo "EKS Cluster: ${EKS_CLUSTER_NAME}"
+          echo "Namespace: ${K8S_NAMESPACE}"
+          echo "Backend Image: ${ECR_REGISTRY}/${BACKEND_ECR_REPOSITORY}:${GITHUB_SHA}"
+          echo "Frontend Image: ${ECR_REGISTRY}/${FRONTEND_ECR_REPOSITORY}:${GITHUB_SHA}"
